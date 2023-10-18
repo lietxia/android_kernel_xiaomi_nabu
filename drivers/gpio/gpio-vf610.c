@@ -139,8 +139,6 @@ static int vf610_gpio_direction_output(struct gpio_chip *chip, unsigned gpio,
 	if (port->sdata && port->sdata->have_paddr)
 		vf610_gpio_writel(mask, port->gpio_base + GPIO_PDDR);
 
-	vf610_gpio_set(chip, gpio, value);
-
 	return pinctrl_gpio_direction_output(chip->base + gpio);
 }
 

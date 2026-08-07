@@ -571,7 +571,7 @@ static unsigned long memcg_sum_events(struct mem_cgroup *memcg,
 	int cpu;
 
 	for_each_possible_cpu(cpu)
-		val += per_cpu(memcg->stat->events[event], cpu);
+		val += per_cpu(memcg->stat_cpu->events[event], cpu);
 	return val;
 }
 
@@ -584,27 +584,27 @@ static void mem_cgroup_charge_statistics(struct mem_cgroup *memcg,
 	 * counted as CACHE even if it's on ANON LRU.
 	 */
 	if (PageAnon(page))
-		__this_cpu_add(memcg->stat->count[MEMCG_RSS], nr_pages);
+		__this_cpu_add(memcg->stat_cpu->count[MEMCG_RSS], nr_pages);
 	else {
-		__this_cpu_add(memcg->stat->count[MEMCG_CACHE], nr_pages);
+		__this_cpu_add(memcg->stat_cpu->count[MEMCG_CACHE], nr_pages);
 		if (PageSwapBacked(page))
-			__this_cpu_add(memcg->stat->count[NR_SHMEM], nr_pages);
+			__this_cpu_add(memcg->stat_cpu->count[NR_SHMEM], nr_pages);
 	}
 
 	if (compound) {
 		VM_BUG_ON_PAGE(!PageTransHuge(page), page);
-		__this_cpu_add(memcg->stat->count[MEMCG_RSS_HUGE], nr_pages);
+		__this_cpu_add(memcg->stat_cpu->count[MEMCG_RSS_HUGE], nr_pages);
 	}
 
 	/* pagein of a big page is an event. So, ignore page size */
 	if (nr_pages > 0)
-		__this_cpu_inc(memcg->stat->events[PGPGIN]);
+		__this_cpu_inc(memcg->stat_cpu->events[PGPGIN]);
 	else {
-		__this_cpu_inc(memcg->stat->events[PGPGOUT]);
+		__this_cpu_inc(memcg->stat_cpu->events[PGPGOUT]);
 		nr_pages = -nr_pages; /* for event */
 	}
 
-	__this_cpu_add(memcg->stat->nr_page_events, nr_pages);
+	__this_cpu_add(memcg->stat_cpu->nr_page_events, nr_pages);
 }
 
 unsigned long mem_cgroup_node_nr_lru_pages(struct mem_cgroup *memcg,
@@ -640,8 +640,8 @@ static bool mem_cgroup_event_ratelimit(struct mem_cgroup *memcg,
 {
 	unsigned long val, next;
 
-	val = __this_cpu_read(memcg->stat->nr_page_events);
-	next = __this_cpu_read(memcg->stat->targets[target]);
+	val = __this_cpu_read(memcg->stat_cpu->nr_page_events);
+	next = __this_cpu_read(memcg->stat_cpu->targets[target]);
 	/* from time_after() in jiffies.h */
 	if ((long)(next - val) < 0) {
 		switch (target) {
@@ -657,7 +657,7 @@ static bool mem_cgroup_event_ratelimit(struct mem_cgroup *memcg,
 		default:
 			break;
 		}
-		__this_cpu_write(memcg->stat->targets[target], next);
+		__this_cpu_write(memcg->stat_cpu->targets[target], next);
 		return true;
 	}
 	return false;
@@ -2505,7 +2505,7 @@ void mem_cgroup_split_huge_fixup(struct page *head)
 static void mem_cgroup_swap_statistics(struct mem_cgroup *memcg,
 				       int nr_entries)
 {
-	this_cpu_add(memcg->stat->count[MEMCG_SWAP], nr_entries);
+	this_cpu_add(memcg->stat_cpu->count[MEMCG_SWAP], nr_entries);
 }
 
 /**
@@ -4306,7 +4306,7 @@ static void __mem_cgroup_free(struct mem_cgroup *memcg)
 
 	for_each_node(node)
 		free_mem_cgroup_per_node_info(memcg, node);
-	free_percpu(memcg->stat);
+	free_percpu(memcg->stat_cpu);
 	kfree(memcg);
 }
 
@@ -4336,8 +4336,8 @@ static struct mem_cgroup *mem_cgroup_alloc(void)
 	if (memcg->id.id < 0)
 		goto fail;
 
-	memcg->stat = alloc_percpu(struct mem_cgroup_stat_cpu);
-	if (!memcg->stat)
+	memcg->stat_cpu = alloc_percpu(struct mem_cgroup_stat_cpu);
+	if (!memcg->stat_cpu)
 		goto fail;
 
 	for_each_node(node)
@@ -5783,12 +5783,12 @@ static void uncharge_batch(const struct uncharge_gather *ug)
 	}
 
 	local_lock_irqsave(event_lock, flags);
-	__this_cpu_sub(ug->memcg->stat->count[MEMCG_RSS], ug->nr_anon);
-	__this_cpu_sub(ug->memcg->stat->count[MEMCG_CACHE], ug->nr_file);
-	__this_cpu_sub(ug->memcg->stat->count[MEMCG_RSS_HUGE], ug->nr_huge);
-	__this_cpu_sub(ug->memcg->stat->count[NR_SHMEM], ug->nr_shmem);
-	__this_cpu_add(ug->memcg->stat->events[PGPGOUT], ug->pgpgout);
-	__this_cpu_add(ug->memcg->stat->nr_page_events, nr_pages);
+	__this_cpu_sub(ug->memcg->stat_cpu->count[MEMCG_RSS], ug->nr_anon);
+	__this_cpu_sub(ug->memcg->stat_cpu->count[MEMCG_CACHE], ug->nr_file);
+	__this_cpu_sub(ug->memcg->stat_cpu->count[MEMCG_RSS_HUGE], ug->nr_huge);
+	__this_cpu_sub(ug->memcg->stat_cpu->count[NR_SHMEM], ug->nr_shmem);
+	__this_cpu_add(ug->memcg->stat_cpu->events[PGPGOUT], ug->pgpgout);
+	__this_cpu_add(ug->memcg->stat_cpu->nr_page_events, nr_pages);
 	memcg_check_events(ug->memcg, ug->dummy_page);
 	local_unlock_irqrestore(event_lock, flags);
 
@@ -6019,7 +6019,7 @@ bool mem_cgroup_charge_skmem(struct mem_cgroup *memcg, unsigned int nr_pages)
 	if (in_softirq())
 		gfp_mask = GFP_NOWAIT;
 
-	this_cpu_add(memcg->stat->count[MEMCG_SOCK], nr_pages);
+	this_cpu_add(memcg->stat_cpu->count[MEMCG_SOCK], nr_pages);
 
 	if (try_charge(memcg, gfp_mask, nr_pages) == 0)
 		return true;
@@ -6040,7 +6040,7 @@ void mem_cgroup_uncharge_skmem(struct mem_cgroup *memcg, unsigned int nr_pages)
 		return;
 	}
 
-	this_cpu_sub(memcg->stat->count[MEMCG_SOCK], nr_pages);
+	this_cpu_sub(memcg->stat_cpu->count[MEMCG_SOCK], nr_pages);
 
 	refill_stock(memcg, nr_pages);
 }

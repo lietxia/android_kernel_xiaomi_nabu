@@ -382,6 +382,54 @@ fail_unlock:
 }
 EXPORT_SYMBOL_GPL(inet_csk_get_port);
 
+void inet_csk_update_fastreuse(struct inet_bind_bucket *tb,
+			       struct sock *sk)
+{
+	kuid_t uid = sock_i_uid(sk);
+
+	if (tb->fastreuseport <= 0)
+		return;
+	if (!sk->sk_reuseport)
+		return;
+	if (rcu_access_pointer(sk->***))
+		return;
+	if (!uid_eq(tb->fastuid, uid))
+		return;
+	/* We only need to check the rcv_saddr if this tb was once marked
+	 * without fastreuseport and then was reset, as we can only know that
+	 * the fast_*rcv_saddr doesn't have any conflicts with the socks on the
+	 * owners list.
+	 */
+	if (tb->fastreuseport == FASTREUSEPORT_ANY)
+		goto out;
+#if IS_ENABLED(CONFIG_IPV6)
+	if (tb->fast_sk_family == AF_INET6) {
+		if (!ipv6_rcv_saddr_equal(&tb->fast_v6_rcv_saddr,
+					  inet6_rcv_saddr(sk),
+					  tb->fast_ipv6_only,
+					  ipv6_only_sock(sk),
+					  true))
+			return;
+	}
+#endif
+	if (tb->fast_rcv_saddr && sk->sk_rcv_saddr &&
+	    !inet_rcv_saddr_equal(sk, tb->fast_sk_family,
+				  tb->fast_ipv6_only, true))
+		return;
+	if (tb->fast_sk_family == AF_INET6 &&
+	    tb->fast_ipv6_only && !ipv6_only_sock(sk))
+		return;
+out:
+	tb->fastreuseport = FASTREUSEPORT_STRICT;
+	tb->fastuid = uid;
+	tb->fast_rcv_saddr = sk->sk_rcv_saddr;
+	tb->fast_ipv6_only = ipv6_only_sock(sk);
+	tb->fast_sk_family = sk->sk_family;
+#if IS_ENABLED(CONFIG_IPV6)
+	tb->fast_v6_rcv_saddr = sk->***;
+#endif
+}
+
 /*
  * Wait for an incoming connection, avoid race conditions. This must be called
  * with the socket locked.

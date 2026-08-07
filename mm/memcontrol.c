@@ -2496,7 +2496,7 @@ void mem_cgroup_split_huge_fixup(struct page *head)
 	for (i = 1; i < HPAGE_PMD_NR; i++)
 		head[i].mem_cgroup = head->mem_cgroup;
 
-	__this_cpu_sub(head->mem_cgroup->stat->count[MEMCG_RSS_HUGE],
+	__this_cpu_sub(head->mem_cgroup->stat_cpu->count[MEMCG_RSS_HUGE],
 		       HPAGE_PMD_NR);
 }
 #endif /* CONFIG_TRANSPARENT_HUGEPAGE */
@@ -4695,8 +4695,8 @@ static int mem_cgroup_move_account(struct page *page,
 	spin_lock_irqsave(&from->move_lock, flags);
 
 	if (!anon && page_mapped(page)) {
-		__this_cpu_sub(from->stat->count[NR_FILE_MAPPED], nr_pages);
-		__this_cpu_add(to->stat->count[NR_FILE_MAPPED], nr_pages);
+		__this_cpu_sub(from->stat_cpu->count[NR_FILE_MAPPED], nr_pages);
+		__this_cpu_add(to->stat_cpu->count[NR_FILE_MAPPED], nr_pages);
 	}
 
 	/*
@@ -4708,16 +4708,16 @@ static int mem_cgroup_move_account(struct page *page,
 		struct address_space *mapping = page_mapping(page);
 
 		if (mapping_cap_account_dirty(mapping)) {
-			__this_cpu_sub(from->stat->count[NR_FILE_DIRTY],
+			__this_cpu_sub(from->stat_cpu->count[NR_FILE_DIRTY],
 				       nr_pages);
-			__this_cpu_add(to->stat->count[NR_FILE_DIRTY],
+			__this_cpu_add(to->stat_cpu->count[NR_FILE_DIRTY],
 				       nr_pages);
 		}
 	}
 
 	if (PageWriteback(page)) {
-		__this_cpu_sub(from->stat->count[NR_WRITEBACK], nr_pages);
-		__this_cpu_add(to->stat->count[NR_WRITEBACK], nr_pages);
+		__this_cpu_sub(from->stat_cpu->count[NR_WRITEBACK], nr_pages);
+		__this_cpu_add(to->stat_cpu->count[NR_WRITEBACK], nr_pages);
 	}
 
 	/*

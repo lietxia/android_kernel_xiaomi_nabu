@@ -4274,8 +4274,8 @@ static int alloc_mem_cgroup_per_node_info(struct mem_cgroup *memcg, int node)
 	if (!pn)
 		return 1;
 
-	pn->lruvec_stat = alloc_percpu(struct lruvec_stat);
-	if (!pn->lruvec_stat) {
+	pn->lruvec_stat_cpu = alloc_percpu(struct lruvec_stat);
+	if (!pn->lruvec_stat_cpu) {
 		kfree(pn);
 		return 1;
 	}
@@ -4296,7 +4296,7 @@ static void free_mem_cgroup_per_node_info(struct mem_cgroup *memcg, int node)
 	if (!pn)
 		return;
 
-	free_percpu(pn->lruvec_stat);
+	free_percpu(pn->lruvec_stat_cpu);
 	kfree(pn);
 }
 

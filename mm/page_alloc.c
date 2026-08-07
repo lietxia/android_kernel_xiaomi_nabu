@@ -1246,7 +1246,7 @@ static void isolate_pcp_pages(int count, struct per_cpu_pages *src,
 	 * Ensure proper count is passed which otherwise would stuck in the
 	 * below while (list_empty(list)) loop.
 	 */
-	count = min(pcp->count, count);
+	count = min(src->count, count);
 	while (count) {
 		struct page *page;
 		struct list_head *list;

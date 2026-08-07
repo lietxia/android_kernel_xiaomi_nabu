@@ -234,7 +234,7 @@ struct mem_cgroup {
 
 	struct mem_cgroup_stat_cpu __percpu *stat_cpu;
 	atomic_long_t		stat[MEMCG_NR_STAT];
-	atomic_long_t		events[MEMCG_NR_EVENTS];
+	atomic_long_t		events[MEMCG_NR_MEMORY_EVENTS];
 
 	unsigned long		socket_pressure;
 

@@ -1,6 +1,9 @@
 name: Build and release nabu kernel
 
 on:
+  push:
+    branches:
+      - 16.2
   workflow_dispatch:
     inputs:
       release_tag:

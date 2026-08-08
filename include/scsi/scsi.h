@@ -260,4 +260,10 @@ static inline __u32 scsi_to_u32(__u8 *ptr)
 	return (ptr[0]<<24) + (ptr[1]<<16) + (ptr[2]<<8) + ptr[3];
 }
 
+/* Legacy SCSI ioctls for backward compatibility */
+#define SCSI_IOCTL_GET_IDLUN		0x5382
+#define SCSI_IOCTL_PROBE_HOST		0x5385
+#define SCSI_IOCTL_GET_BUS_NUMBER	0x5386
+#define SCSI_IOCTL_GET_PCI		0x5387
+
 #endif /* _SCSI_SCSI_H */
